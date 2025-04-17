@@ -37,10 +37,80 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB max file size
 });
 
+
+// Endpoint for file upload
+// authenticateToken
+router.post('/uploadFile', upload.single('file'), async (req, res) => {
+  try {
+      var dirName = req.body.directoryName;
+      var uploadedName = req.file.filename;
+      var originalName = req.file.originalname;
+      var size = (req.file.size / 1024).toFixed(2); //KB
+
+      const results = await db.executeQuery(
+          'INSERT INTO uploads(dir, name, filename, size) values(?,?,?,?);',
+          [dirName, uploadedName, originalName, size]
+      );
+
+      if (results.affectedRows > 0) {
+          // Successfully created
+          res.status(201).json({ status: 'success', message: 'File Upload Successfully' });
+      } else {
+          // In case of unexpected behavior
+          res.status(500).json({ status: 500, error: 'File Upload failed due to an unknown error' });
+      }
+  } catch (err) {
+      console.log(err)
+      res.send({
+          status: 'error',
+          message: 'File upload failed',
+      });
+  }
+});
+
 /* GET home page. */
 router.get('/', function (req, res, next) {
   res.render('index', { title: 'Express' });
 });
+
+
+//Login
+router.post('/login', async function (req, res, next) {
+  const { username, password } = req.body;
+  try {
+      const results = await db.executeQuery('SELECT * FROM users WHERE uname = ? and password = ?;', [username, password]);
+      if (results.length) {
+          res.status(200).send({ status: "success", results: results[0] });
+      } else {
+          res.status(200).send({ status: "failed", message: "No User Found" });
+      }
+  } catch (err) {
+      console.error('Error fetching users:', err.message);
+      res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 router.post('/add-student', upload.single('photo'), async function (req, res, next) {
   try {
@@ -137,7 +207,49 @@ router.get('/get-students', async function (req, res, next) {
       error: error.message
     });
   }
-})
+});
+
+router.get('/files/:filename', (req, res) => {
+  const fileName = req.params.filename;
+  // Construct the file path
+  const filePath = path.join(__dirname, '../uploads', fileName);
+  // Check if the file exists before serving
+  res.sendFile(filePath, (err) => {
+      if (err) {
+          console.error('Error sending file:', err);
+          res.status(404).send('File not found');
+      }
+  });
+});
+
+// Endpoint for get all photos
+router.get('/getAllPhotos', async (req, res) => {
+  try {
+      const results = await db.executeQuery(
+          `SELECT * 
+          FROM uploads
+          WHERE LOWER(filename) LIKE '%.jpg'
+             OR LOWER(filename) LIKE '%.jpeg'
+             OR LOWER(filename) LIKE '%.png'
+             OR LOWER(filename) LIKE '%.gif';`,
+          []
+      );
+
+      if (results.length > 0) {
+          // Successfully created
+          res.status(200).json({ status: 'success', message: 'File Fetched successfully', files: results });
+      } else {
+          // In case of unexpected behavior
+          res.status(200).json({ status: 'success', message: 'No Photo Found', files:[] });
+      }
+  } catch (err) {
+      res.send({
+          status: 500,
+          message: 'Failed to Fetch',
+      });
+  }
+});
+
 
 
 module.exports = router;
