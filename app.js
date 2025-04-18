@@ -18,7 +18,10 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 // app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.use('/', indexRouter);
+app.use('/api', indexRouter);
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {
