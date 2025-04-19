@@ -42,97 +42,97 @@ const upload = multer({
 // authenticateToken
 router.post('/uploadFile', upload.single('file'), async (req, res) => {
   try {
-      var dirName = req.body.directoryName;
-      var uploadedName = req.file.filename;
-      var originalName = req.file.originalname;
-      var size = (req.file.size / 1024).toFixed(2); //KB
+    var dirName = req.body.directoryName;
+    var uploadedName = req.file.filename;
+    var originalName = req.file.originalname;
+    var size = (req.file.size / 1024).toFixed(2); //KB
 
-      const results = await db.executeQuery(
-          'INSERT INTO uploads(dir, name, filename, size) values(?,?,?,?);',
-          [dirName, uploadedName, originalName, size]
-      );
+    const results = await db.executeQuery(
+      'INSERT INTO uploads(dir, name, filename, size) values(?,?,?,?);',
+      [dirName, uploadedName, originalName, size]
+    );
 
-      if (results.affectedRows > 0) {
-          // Successfully created
-          res.status(201).json({ status: 'success', message: 'File Upload Successfully' });
-      } else {
-          // In case of unexpected behavior
-          res.status(500).json({ status: 500, error: 'File Upload failed due to an unknown error' });
-      }
+    if (results.affectedRows > 0) {
+      // Successfully created
+      res.status(201).json({ status: 'success', message: 'File Upload Successfully' });
+    } else {
+      // In case of unexpected behavior
+      res.status(500).json({ status: 500, error: 'File Upload failed due to an unknown error' });
+    }
   } catch (err) {
-      console.log(err)
-      res.send({
-          status: 'error',
-          message: 'File upload failed',
-      });
+    console.log(err)
+    res.send({
+      status: 'error',
+      message: 'File upload failed',
+    });
   }
 });
 
 // Endpoint for get all photos
 router.get('/getAllPhotos', async (req, res) => {
   try {
-      const results = await db.executeQuery(
-          `SELECT * 
+    const results = await db.executeQuery(
+      `SELECT * 
           FROM uploads
           WHERE LOWER(filename) LIKE '%.jpg'
              OR LOWER(filename) LIKE '%.jpeg'
              OR LOWER(filename) LIKE '%.png'
              OR LOWER(filename) LIKE '%.gif';`,
-          []
-      );
+      []
+    );
 
-      if (results.length > 0) {
-          // Successfully created
-          res.status(200).json({ status: 'success', message: 'File Fetched successfully', files: results });
-      } else {
-          // In case of unexpected behavior
-          res.status(200).json({ status: 'success', message: 'No Photo Found', files:[] });
-      }
+    if (results.length > 0) {
+      // Successfully created
+      res.status(200).json({ status: 'success', message: 'File Fetched successfully', files: results });
+    } else {
+      // In case of unexpected behavior
+      res.status(200).json({ status: 'success', message: 'No Photo Found', files: [] });
+    }
   } catch (err) {
-      res.send({
-          status: 500,
-          message: 'Failed to Fetch',
-      });
+    res.send({
+      status: 500,
+      message: 'Failed to Fetch',
+    });
   }
 });
 
 // Endpoint for get photos
 router.delete('/deleteFile', async (req, res) => {
   try {
-      const { fid } = req.body;
+    const { fid } = req.body;
 
-      const results = await db.executeQuery(
-          'select name from uploads WHERE fid = ?;',
+    const results = await db.executeQuery(
+      'select name from uploads WHERE fid = ?;',
+      [fid]
+    );
+    if (results.length) {
+      const filePath = path.join(__dirname, `../uploads/${results[0].name}`);
+      fs.unlink(filePath, async (err) => {
+        if (err) {
+          console.error('Error deleting file:', err);
+          return res.send({ status: 'error', message: 'Error deleting file' });
+        }
+
+        const results = await db.executeQuery(
+          'DELETE FROM uploads WHERE fid = ?;',
           [fid]
-      );
-      if (results.length) {
-          const filePath = path.join(__dirname, `../uploads/${results[0].name}`);
-          fs.unlink(filePath, async (err) => {
-              if (err) {
-                  console.error('Error deleting file:', err);
-                  return res.send({ status: 'error', message: 'Error deleting file' });
-              }
+        );
 
-              const results = await db.executeQuery(
-                  'DELETE FROM uploads WHERE fid = ?;',
-                  [fid]
-              );
-
-              if (results.affectedRows > 0) {
-                  res.status(200).json({ status: 'success', message: 'File Deleted successfully' });
-              } else {
-                  // In case of unexpected behavior
-                  res.status(200).json({ status: 'success', message: 'Failed to Delete' });
-              }
-          });
-      } else {
+        if (results.affectedRows > 0) {
+          res.status(200).json({ status: 'success', message: 'File Deleted successfully' });
+        } else {
+          // In case of unexpected behavior
           res.status(200).json({ status: 'success', message: 'Failed to Delete' });
-      }
-  } catch (err) {
-      res.send({
-          status: 500,
-          message: 'Failed to Delete',
+        }
       });
+    } else {
+      res.status(200).json({ status: 'success', message: 'Failed to Delete' });
+    }
+  } catch (err) {
+    res.send({
+      status: 500,
+      message: 'Failed to Delete',
+    });
   }
 });
 
@@ -146,15 +146,15 @@ router.get('/', function (req, res, next) {
 router.post('/login', async function (req, res, next) {
   const { username, password } = req.body;
   try {
-      const results = await db.executeQuery('SELECT * FROM users WHERE uname = ? and password = ?;', [username, password]);
-      if (results.length) {
-          res.status(200).send({ status: "success", results: results[0] });
-      } else {
-          res.status(200).send({ status: "failed", message: "No User Found" });
-      }
+    const results = await db.executeQuery('SELECT * FROM users WHERE uname = ? and password = ?;', [username, password]);
+    if (results.length) {
+      res.status(200).send({ status: "success", results: results[0] });
+    } else {
+      res.status(200).send({ status: "failed", message: "No User Found" });
+    }
   } catch (err) {
-      console.error('Error fetching users:', err.message);
-      res.status(500).json({ error: 'Internal Server Error' });
+    console.error('Error fetching users:', err.message);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -164,26 +164,26 @@ router.put('/updateProfile', async function (req, res, next) {
   const { uname, name, email, mobile } = req.body;
   console.log(req.body)
   try {
-      var dynQuery = []; 
-      var updatingData = [];
-      if(name){dynQuery.push('name=?');updatingData.push(name)}
-      if(email){dynQuery.push('email=?');updatingData.push(email)}
-      if(mobile){dynQuery.push('mobile=?');updatingData.push(mobile)}
-      updatingData.push(uname);
-      const results = await db.executeQuery(
-          `UPDATE users SET ${dynQuery.join(',')} WHERE uname=?;`,updatingData          
-      );
-      if (results.affectedRows > 0) {
-          // Successfully created
-          const results = await db.executeQuery('SELECT * FROM users WHERE uname = ?;', [uname]);
-          res.status(201).json({ status: 'success', message: 'User Updated successfully', results:results[0] });
-      } else {
-          // In case of unexpected behavior
-          res.status(500).json({ status: 500, error: 'User updation failed due to an unknown error' });
-      }
+    var dynQuery = [];
+    var updatingData = [];
+    if (name) { dynQuery.push('name=?'); updatingData.push(name) }
+    if (email) { dynQuery.push('email=?'); updatingData.push(email) }
+    if (mobile) { dynQuery.push('mobile=?'); updatingData.push(mobile) }
+    updatingData.push(uname);
+    const results = await db.executeQuery(
+      `UPDATE users SET ${dynQuery.join(',')} WHERE uname=?;`, updatingData
+    );
+    if (results.affectedRows > 0) {
+      // Successfully created
+      const results = await db.executeQuery('SELECT * FROM users WHERE uname = ?;', [uname]);
+      res.status(201).json({ status: 'success', message: 'User Updated successfully', results: results[0] });
+    } else {
+      // In case of unexpected behavior
+      res.status(500).json({ status: 500, error: 'User updation failed due to an unknown error' });
+    }
   } catch (err) {
-      console.error('Error fetching users:', err.message);
-      res.status(500).json({ message: 'User updation failed', status: 500 });
+    console.error('Error fetching users:', err.message);
+    res.status(500).json({ message: 'User updation failed', status: 500 });
   }
 });
 
@@ -192,50 +192,98 @@ router.post('/addStaff', async function (req, res, next) {
   const { name, designation, email, department, phone } = req.body;
   try {
 
-      const checkUser = await db.executeQuery('SELECT * FROM staff WHERE name = ?;', [name]);
+    const checkUser = await db.executeQuery('SELECT * FROM staff WHERE name = ?;', [name]);
 
-      if (checkUser.length) {
-          res.status(500).json({ status: 500, message: 'Staff Already Exist' });
+    if (checkUser.length) {
+      res.status(500).json({ status: 500, message: 'Staff Already Exist' });
+    } else {
+      const results = await db.executeQuery(
+        'INSERT INTO staff(name, designation, department, email, phone) values(?,?,?,?,?);',
+        [name, designation, department, email, phone]
+      );
+
+      if (results.affectedRows > 0) {
+        // Successfully created
+        const data = await db.executeQuery('SELECT * FROM staff;', []);
+        res.status(201).json({ status: 'success', message: 'Staff Added Successfully', results: data });
       } else {
-          const results = await db.executeQuery(
-              'INSERT INTO staff(name, designation, department, email, phone) values(?,?,?,?,?);',
-              [name, designation, email, department, phone]
-          );
-
-          if (results.affectedRows > 0) {
-              // Successfully created
-              const data = await db.executeQuery('SELECT * FROM staff;', []);
-              res.status(201).json({ status: 'success', message: 'Staff Added Successfully', results: data });
-          } else {
-              // In case of unexpected behavior
-              res.status(500).json({ status: 500, message: 'Staff creation failed due to an unknown error' });
-          }
+        // In case of unexpected behavior
+        res.status(500).json({ status: 500, message: 'Staff creation failed due to an unknown error' });
       }
+    }
   } catch (err) {
-      console.error('Error fetching users:', err.message);
-      res.status(500).json({ message: 'Staff creation failed', status: 500 });
+    console.error('Error fetching users:', err.message);
+    res.status(500).json({ message: 'Staff creation failed', status: 500 });
   }
 });
 
 router.get('/getStaff', async function (req, res, next) {
   try {
-      const results = await db.executeQuery(
-          'SELECT * FROM staff;',
-          []
-      );
-      if (results.length) {
-          // Successfully created
-          res.status(201).json({ status: 'success', results: results });
-      } else {
-          // In case of unexpected behavior
-          res.status(404).json({ status: 200, message: 'No Staff Available' });
-      }
+    const results = await db.executeQuery(
+      'SELECT * FROM staff;',
+      []
+    );
+    if (results.length) {
+      // Successfully created
+      res.status(201).json({ status: 'success', results: results });
+    } else {
+      // In case of unexpected behavior
+      res.status(404).json({ status: 200, message: 'No Staff Available' });
+    }
   } catch (err) {
-      console.error('Error fetching link:', err.message);
-      res.status(500).json({ message: 'Staff fetching failed', status: 500 });
+    console.error('Error fetching link:', err.message);
+    res.status(500).json({ message: 'Staff fetching failed', status: 500 });
   }
 });
 
+
+router.post('/updateStaff/:sid', async function (req, res, next) {
+  const { sid } = req.params;
+  const { name, designation, email, department, phone } = req.body;
+  try {
+
+    const results = await db.executeQuery(
+      "UPDATE staff SET name = ?,designation = ?,email = ?,department = ?, phone = ? WHERE sid = ?;",
+      [name, designation, email, department, phone, sid]
+    );
+
+    if (results.affectedRows > 0) {
+      // Successfully created
+      res.status(201).json({ status: 'success', message: 'Staff Detail Updated', staffid: results.insertId });
+    } else {
+      // In case of unexpected behavior
+      res.status(500).json({ status: 500, message: 'Staff updation failed due to an unknown error' });
+    }
+
+  } catch (err) {
+    console.error('Error fetching users:', err.message);
+    res.status(500).json({ message: 'Staff updation failed', status: 500 });
+  }
+});
+
+router.delete('/removeStaff', async function (req, res, next) {
+  const { sid } = req.body;
+  try {
+
+    const results = await db.executeQuery(
+      "DELETE FROM staff WHERE sid = ?;",
+      [sid]
+    );
+    console.log(results)
+
+    if (results.affectedRows > 0) {
+      // Successfully created
+      res.status(201).json({ status: 'success', message: 'Staff Deleted Successfully' });
+    } else {
+      // In case of unexpected behavior
+      res.status(500).json({ status: 500, message: 'Staff deleteion failed due to an unknown error' });
+    }
+
+  } catch (err) {
+    console.error('Error fetching users:', err.message);
+    res.status(500).json({ message: 'Staff deletion failed', status: 500 });
+  }
+});
 
 
 
@@ -277,7 +325,7 @@ router.post('/add-student', upload.single('photo'), async function (req, res, ne
       });
     }
 
-    
+
 
     const sql = `INSERT INTO students 
         (student_name, fathers_name, fathers_occupation, mothers_name, mothers_occupation, gender, email, mobile, 
@@ -303,7 +351,7 @@ router.post('/add-student', upload.single('photo'), async function (req, res, ne
       });
     } else {
       if (req.file) fs.unlinkSync(req.file.path);
-        
+
       return res.status(500).json({
         success: false,
         message: 'Database error. Please try again.',
@@ -358,10 +406,10 @@ router.get('/files/:filename', (req, res) => {
   const filePath = path.join(__dirname, '../uploads', fileName);
   // Check if the file exists before serving
   res.sendFile(filePath, (err) => {
-      if (err) {
-          console.error('Error sending file:', err);
-          res.status(404).send('File not found');
-      }
+    if (err) {
+      console.error('Error sending file:', err);
+      res.status(404).send('File not found');
+    }
   });
 });
 
