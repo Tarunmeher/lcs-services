@@ -47,23 +47,52 @@ router.post('/uploadFile', upload.single('file'), async (req, res) => {
     var originalName = req.file.originalname;
     var size = (req.file.size / 1024).toFixed(2); //KB
 
-    const results = await db.executeQuery(
-      'INSERT INTO uploads(dir, name, filename, size) values(?,?,?,?);',
-      [dirName, uploadedName, originalName, size]
-    );
-
-    if (results.affectedRows > 0) {
-      // Successfully created
-      res.status(201).json({ status: 'success', message: 'File Upload Successfully' });
+    if (req.body.sid) {
+      const isExist = await db.executeQuery(
+        'SELECT profile_pic from staff WHERE sid=?;',
+        [req.body.sid]
+      );
+      const results = await db.executeQuery(
+        'UPDATE staff SET profile_pic=? WHERE sid=?;',
+        [uploadedName, req.body.sid]
+      );
+      if (results.affectedRows > 0) {
+        // Successfully created
+        if (isExist[0].profile_pic) {
+          const filePath = path.join(__dirname, `../uploads/${isExist[0].profile_pic}`);
+          fs.unlink(filePath, async (err) => {
+            if (err) {
+              console.error('Error deleting staff profile picture:', err);
+            }
+          });
+        }
+        res.status(201).json({ status: 'success', message: 'Photo Updated Successfully' });
+      } else {
+        // In case of unexpected behavior 
+        res.status(500).json({ status: 500, error: 'Photo Updated failed due to an unknown error' });
+      }
     } else {
-      // In case of unexpected behavior
-      res.status(500).json({ status: 500, error: 'File Upload failed due to an unknown error' });
+      const results = await db.executeQuery(
+        'INSERT INTO uploads(dir, name, filename, size) values(?,?,?,?);',
+        [dirName, uploadedName, originalName, size]
+      );
+
+      if (results.affectedRows > 0) {
+        // Successfully created
+        res.status(201).json({ status: 'success', message: 'Photo Upload Successfully' });
+      } else {
+        // In case of unexpected behavior 
+        res.status(500).json({ status: 500, error: 'Photo Upload failed due to an unknown error' });
+      }
     }
+
+
+
   } catch (err) {
     console.log(err)
     res.send({
       status: 'error',
-      message: 'File upload failed',
+      message: 'Photo upload failed',
     });
   }
 });
@@ -189,17 +218,17 @@ router.put('/updateProfile', async function (req, res, next) {
 
 //Add Staff
 router.post('/addStaff', async function (req, res, next) {
-  const { name, designation, email, department, phone } = req.body;
+  const { name, designation, email, department, phone, org } = req.body;
   try {
 
-    const checkUser = await db.executeQuery('SELECT * FROM staff WHERE name = ?;', [name]);
+    const checkUser = await db.executeQuery('SELECT * FROM staff WHERE phone = ?;', [phone]);
 
     if (checkUser.length) {
       res.status(500).json({ status: 500, message: 'Staff Already Exist' });
     } else {
       const results = await db.executeQuery(
-        'INSERT INTO staff(name, designation, department, email, phone) values(?,?,?,?,?);',
-        [name, designation, department, email, phone]
+        'INSERT INTO staff(name, designation, department, email, phone, org) values(?,?,?,?,?,?);',
+        [name, designation, department, email, phone, org]
       );
 
       if (results.affectedRows > 0) {
@@ -239,12 +268,12 @@ router.get('/getStaff', async function (req, res, next) {
 
 router.post('/updateStaff/:sid', async function (req, res, next) {
   const { sid } = req.params;
-  const { name, designation, email, department, phone } = req.body;
+  const { name, designation, email, department, phone, org } = req.body;
   try {
 
     const results = await db.executeQuery(
-      "UPDATE staff SET name = ?,designation = ?,email = ?,department = ?, phone = ? WHERE sid = ?;",
-      [name, designation, email, department, phone, sid]
+      "UPDATE staff SET name = ?,designation = ?,email = ?,department = ?, phone = ?, org=? WHERE sid = ?;",
+      [name, designation, email, department, phone, org, sid]
     );
 
     if (results.affectedRows > 0) {
@@ -404,6 +433,19 @@ router.get('/files/:filename', (req, res) => {
   const fileName = req.params.filename;
   // Construct the file path
   const filePath = path.join(__dirname, '../uploads', fileName);
+  // Check if the file exists before serving
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error('Error sending file:', err);
+      res.status(404).send('File not found');
+    }
+  });
+});
+
+router.get('/siteimages/:filename', (req, res) => {
+  const fileName = req.params.filename;
+  // Construct the file path
+  const filePath = path.join(__dirname, '../uploads/siteimages', fileName);
   // Check if the file exists before serving
   res.sendFile(filePath, (err) => {
     if (err) {
