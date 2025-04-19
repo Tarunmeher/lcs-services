@@ -26,7 +26,7 @@ app.get('*', (req, res) => {
 // Error Handling Middleware
 app.use((err, req, res, next) => {
   if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).send({ status: 400, message: "File size shouldn't be more than 512 KB" });
+    return res.status(400).send({ status: 400, message: "File size shouldn't be more than 5 MB" });
   }
 
   if (err.message === 'Only PDF, Word, Excel, and image files are allowed!') {
