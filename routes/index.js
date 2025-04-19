@@ -5,7 +5,17 @@ const fs = require('fs');
 const multer = require('multer');
 const db = require('../config/db');
 
-
+const allowedTypes = [
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/gif',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' // .xlsx
+];
 // Multer Configuration for File Uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -23,7 +33,7 @@ const storage = multer.diskStorage({
 
 // File Filter (Allow only images)
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
+  if (file && allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new Error('Only image files are allowed!'), false);
@@ -298,7 +308,7 @@ router.delete('/removeStaff', async function (req, res, next) {
       "DELETE FROM staff WHERE sid = ?;",
       [sid]
     );
-    console.log(results)
+    // console.log(results)
 
     if (results.affectedRows > 0) {
       // Successfully created
@@ -314,6 +324,128 @@ router.delete('/removeStaff', async function (req, res, next) {
   }
 });
 
+
+router.post('/addNewsOrNotification', upload.single('file'), async (req, res) => {
+  try {
+    var uploadedName = req.file ? req.file.filename : '';
+    var notification = req.body.notification;
+    var type = req.body.type;
+    const results = await db.executeQuery(
+      'INSERT INTO notification(notification, filename, type) values(?,?,?);',
+      [notification, uploadedName, type]
+    );
+
+    if (results.affectedRows > 0) {
+      // Successfully created
+      res.status(201).json({ status: 'success', message: 'Added Successfully' });
+    } else {
+      // In case of unexpected behavior 
+      res.status(500).json({ status: 500, message: 'Failed due to an unknown error' });
+    }
+  } catch (err) {
+    console.log(err)
+    res.send({
+      status: 'error',
+      message: 'Failed to Add',
+    });
+  }
+});
+
+router.post('/updateNewsOrNotification', upload.single('file'), async (req, res) => {
+  try {
+    var uploadedName = req.file ? req.file.filename : '';
+    var notification = req.body.notification;
+    var type = req.body.type;
+    var id = req.body.id;
+
+    const isExist = await db.executeQuery(
+      'SELECT filename from notification WHERE id=?;',
+      [id]
+    );
+
+    const results = await db.executeQuery(
+      'UPDATE notification SET notification=?, filename=?, type=? WHERE id=?;',
+      [notification, uploadedName, type, id]
+    );
+
+    if (results.affectedRows > 0) {
+      // Successfully created
+      if (isExist[0].filename) {
+        const filePath = path.join(__dirname, `../uploads/${isExist[0].filename}`);
+        fs.unlink(filePath, async (err) => {
+          if (err) {
+            console.error('Error deleting notification file:', err);
+          }
+        });
+      }
+      res.status(201).json({ status: 'success', message: 'Updated Successfully' });
+    } else {
+      // In case of unexpected behavior 
+      res.status(500).json({ status: 500, message: 'Failed due to an unknown error' });
+    }
+  } catch (err) {
+    console.log(err)
+    res.send({
+      status: 'error',
+      message: 'Failed to Update',
+    });
+  }
+});
+
+router.delete('/deleteNotification', async function (req, res, next) {
+  const { id } = req.body;
+  try {
+    const isExist = await db.executeQuery(
+      'SELECT filename from notification WHERE id=?;',
+      [id]
+    );
+
+    const results = await db.executeQuery(
+      "DELETE FROM notification WHERE id = ?;",
+      [id]
+    );
+    // console.log(results)
+
+    if (results.affectedRows > 0) {
+      // Successfully created
+      if (isExist[0].filename) {
+        const filePath = path.join(__dirname, `../uploads/${isExist[0].filename}`);
+        fs.unlink(filePath, async (err) => {
+          if (err) {
+            console.error('Error deleting notification file:', err);
+          }
+        });
+      }
+      res.status(201).json({ status: 'success', message: 'Deleted Successfully' });
+    } else {
+      // In case of unexpected behavior
+      res.status(500).json({ status: 500, message: 'Deleteion failed due to an unknown error' });
+    }
+
+  } catch (err) {
+    console.error('Error fetching notifications:', err.message);
+    res.status(500).json({ message: 'Deletion failed', status: 500 });
+  }
+});
+
+router.get('/getNewsOrNotification', async function (req, res, next) {
+  try {
+    const results = await db.executeQuery(
+      'SELECT * FROM notification;',
+      []
+    );
+    if (results.length) {
+      // Successfully created
+      res.status(201).json({ status: 'success', results: results });
+    } else {
+      // In case of unexpected behavior
+      res.status(404).json({ status: 200, message: 'No Staff Available' });
+    }
+  } catch (err) {
+    console.error('Error fetching notification:', err.message);
+    res.status(500).json({ message: 'Notification fetching failed', status: 500 });
+  }
+});
 
 
 
