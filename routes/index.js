@@ -189,7 +189,7 @@ router.post('/login', async function (req, res, next) {
     if (results.length) {
       res.status(200).send({ status: "success", results: results[0] });
     } else {
-      res.status(200).send({ status: "failed", message: "No User Found" });
+      res.status(200).send({ status: "failed", message: "Invalid Username or Password" });
     }
   } catch (err) {
     console.error('Error fetching users:', err.message);
@@ -447,6 +447,100 @@ router.get('/getNewsOrNotification', async function (req, res, next) {
   }
 });
 
+
+//Add Staff
+router.post('/createEvent', async function (req, res, next) {
+  const { event_name, description, scheduled_date, time } = req.body;
+  try {
+
+    const checkEvent = await db.executeQuery('SELECT * FROM event WHERE event_name = ? and scheduled_date=?;',
+      [event_name, scheduled_date]);
+
+    if (checkEvent.length) {
+      res.status(500).json({ status: 500, message: 'Event is already exists with same date' });
+    } else {
+      const results = await db.executeQuery(
+        'INSERT INTO event(event_name, description, scheduled_date, time) values(?,?,?,?);',
+        [event_name, description, scheduled_date, time]
+      );
+
+      if (results.affectedRows > 0) {
+        // Successfully created
+        // const data = await db.executeQuery('SELECT * FROM event;', []);
+        res.status(201).json({ status: 'success', message: 'Event Created Successfully', results: [] });
+      } else {
+        // In case of unexpected behavior
+        res.status(500).json({ status: 500, message: 'Event creation failed due to an unknown error' });
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching Event:', err.message);
+    res.status(500).json({ message: 'Event creation failed', status: 500 });
+  }
+});
+
+router.get('/getEvents', async function (req, res, next) {
+  try {
+    const results = await db.executeQuery(
+      'SELECT * FROM event;',
+      []
+    );
+    if (results.length) {
+      // Successfully created
+      res.status(201).json({ status: 'success', results: results });
+    } else {
+      // In case of unexpected behavior
+      res.status(404).json({ status: 200, message: 'No Event Available' });
+    }
+  } catch (err) {
+    console.error('Error fetching event:', err.message);
+    res.status(500).json({ message: 'Event fetching failed', status: 500 });
+  }
+});
+
+router.put('/updateEvent', async function (req, res, next) {
+  const { id, event_name, description, scheduled_date, time } = req.body;
+  try {
+    const results = await db.executeQuery(
+      'UPDATE event SET event_name=?, description=?, scheduled_date=?, time=? WHERE id=?;',
+      [event_name, description, scheduled_date, time, id]
+    );
+
+    if (results.affectedRows > 0) {
+      // Successfully created
+      // const data = await db.executeQuery('SELECT * FROM event;', []);
+      res.status(201).json({ status: 'success', message: 'Event Updated Successfully', results: [] });
+    } else {
+      // In case of unexpected behavior
+      res.status(500).json({ status: 500, message: 'Event updation failed due to an unknown error' });
+    }
+  } catch (err) {
+    console.error('Error fetching Event:', err.message);
+    res.status(500).json({ message: 'Event updation failed', status: 500 });
+  }
+});
+
+
+router.delete('/deleteEvent', async function (req, res, next) {
+  const { id } = req.body;
+  try {
+    const results = await db.executeQuery(
+      "DELETE FROM event WHERE id = ?;",
+      [id]
+    );
+
+    if (results.affectedRows > 0) {
+      res.status(201).json({ status: 'success', message: 'Deleted Successfully' });
+    } else {
+      // In case of unexpected behavior
+      res.status(500).json({ status: 500, message: 'Deleteion failed due to an unknown error' });
+    }
+
+  } catch (err) {
+    console.error('Error fetching event:', err.message);
+    res.status(500).json({ message: 'Deletion failed', status: 500 });
+  }
+});
 
 
 
