@@ -544,6 +544,68 @@ router.delete('/deleteEvent', async function (req, res, next) {
 
 
 
+router.get('/getBannerImages', async function (req, res, next) {
+  try {
+    const results = await db.executeQuery(
+      'SELECT * FROM banner;',
+      []
+    );
+    if (results.length) {
+      // Successfully created
+      res.status(201).json({ status: 'success', results: results });
+    } else {
+      // In case of unexpected behavior
+      res.status(404).json({ status: 200, message: 'No Banner Available' });
+    }
+  } catch (err) {
+    console.error('Error fetching banner:', err.message);
+    res.status(500).json({ message: 'Banner fetching failed', status: 500 });
+  }
+});
+
+router.post('/updateBannerImage', upload.single('file'), async (req, res) => {
+  try {
+    var uploadedName = req.file ? req.file.filename : '';
+    var description = req.body.description;
+    var title = req.body.title;
+    var id = req.body.id;
+
+    const isExist = await db.executeQuery(
+      'SELECT profile_pic from banner WHERE id=?;',
+      [id]
+    );
+
+    const results = await db.executeQuery(
+      'UPDATE banner SET description=?, profile_pic=?, title=? WHERE id=?;',
+      [description, uploadedName, title, id]
+    );
+
+    if (results.affectedRows > 0) {
+      // Successfully created
+      if (isExist[0].profile_pic) {
+        const filePath = path.join(__dirname, `../uploads/${isExist[0].profile_pic}`);
+        fs.unlink(filePath, async (err) => {
+          if (err) {
+            console.error('Error deleting notification file:', err);
+          }
+        });
+      }
+      res.status(201).json({ status: 'success', message: 'Updated Successfully' });
+    } else {
+      // In case of unexpected behavior 
+      res.status(500).json({ status: 500, message: 'Failed due to an unknown error' });
+    }
+  } catch (err) {
+    console.log(err)
+    res.send({
+      status: 'error',
+      message: 'Failed to Update',
+    });
+  }
+});
+
+
+
 
 
 
